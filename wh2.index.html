@@ -258,7 +258,8 @@ function renderDashboard(){
 }
 
 /* EXISTING FUNCTIONS (UNCHANGED LOGIC) */
-function renderTable(){ /* unchanged */ tableBody.innerHTML="";
+function renderTable(){
+  tableBody.innerHTML="";
   items.forEach((i,idx)=>{
     tableBody.innerHTML+=`<tr>
       <td>${i.company}</td><td>${i.sku}</td><td>${i.category}</td>
@@ -269,7 +270,8 @@ function renderTable(){ /* unchanged */ tableBody.innerHTML="";
   });
 }
 
-function renderHistory(){ historyBody.innerHTML="";
+function renderHistory(){
+  historyBody.innerHTML="";
   history.slice().reverse().forEach((h,i)=>{
     const r=history.length-1-i;
     historyBody.innerHTML+=`<tr>
@@ -283,7 +285,84 @@ function renderHistory(){ historyBody.innerHTML="";
 }
 
 renderTable();renderHistory();renderDashboard();
+
+/* =========================
+   ADDITIONS ONLY (NO CHANGE)
+========================= */
+
+supplierType.addEventListener("change",()=>{
+  if(supplierType.value==="Walk-in"){
+    company.value="Walk-in";
+    company.disabled=true;
+  }else{
+    company.value="";
+    company.disabled=false;
+  }
+});
+
+stockForm.addEventListener("submit",e=>{
+  e.preventDefault();
+
+  const comp=company.value||"Walk-in";
+  const skuVal=sku.value.trim();
+  const cat=category.value.trim();
+  const w=parseFloat(weight.value);
+  const p=parseFloat(price.value);
+  const t=type.value;
+
+  if(!skuVal||!cat||w<=0||p<=0){
+    alert("Please fill all fields correctly");
+    return;
+  }
+
+  let item=items.find(i=>i.sku===skuVal);
+  if(!item){
+    item={company:comp,sku:skuVal,category:cat,weight:0,price:p};
+    items.push(item);
+  }
+
+  if(t==="IN"){
+    item.weight+=w;
+    item.price=p;
+  }else{
+    if(item.weight<w){alert("Not enough stock");return;}
+    item.weight-=w;
+  }
+
+  history.push({
+    company:comp,sku:skuVal,type:t,
+    weight:w,price:p,
+    total:(w*p).toFixed(2),
+    date:new Date().toLocaleString()
+  });
+
+  localStorage.setItem("scrap_items",JSON.stringify(items));
+  localStorage.setItem("scrap_history",JSON.stringify(history));
+
+  stockForm.reset();
+  company.disabled=false;
+
+  renderTable();renderHistory();renderDashboard();
+});
+
+function deleteItem(index){
+  if(confirm("Delete inventory item?")){
+    items.splice(index,1);
+    localStorage.setItem("scrap_items",JSON.stringify(items));
+    renderTable();renderDashboard();
+  }
+}
+
+function deleteHistory(index){
+  if(prompt("Enter admin password")!=="0000"){
+    alert("Wrong password");return;
+  }
+  history.splice(index,1);
+  localStorage.setItem("scrap_history",JSON.stringify(history));
+  renderHistory();renderDashboard();
+}
 </script>
 
 </body>
 </html>
+

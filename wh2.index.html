@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scrap Warehouse Management System</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f1f5f9;
+  margin: 0;
+  padding: 30px;
+  color: #1f2937;
+}
+
+/* HEADER */
+.header {
+  background: #1e40af;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 25px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* CARD */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
+
+/* FORM */
+form {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+input, select {
+  padding: 11px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+}
+
+/* BUTTONS */
+.btn-save {
+  grid-column: span 4;
+  padding: 13px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.btn-save:hover { background: #1d4ed8; }
+
+.btn-delete {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.in { color: #16a34a; font-weight: 600; }
+.out { color: #ea580c; font-weight: 600; }
+
+/* TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th {
+  background: #2563eb;
+  color: white;
+  padding: 10px;
+}
+
+td {
+  padding: 9px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.section-title {
+  font-weight: 600;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">♻️ Scrap Warehouse Management System</div>
+
+<!-- ================= INVENTORY DASHBOARD (NEW) ================= -->
+<div class="card">
+  <div class="section-title">Inventory Dashboard</div>
+
+  <div style="display:grid; grid-template-columns:2fr 1fr; gap:30px;">
+    <div>
+      <h4>Inventory Status</h4>
+      <canvas id="inventoryStatusChart" height="160"></canvas>
+    </div>
+
+    <div>
+      <h4>Shipment Status</h4>
+      <canvas id="shipmentStatusChart" height="160"></canvas>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-top:25px;">
+    <div class="card" style="text-align:center;">
+      <h3 id="dashTotalValue">RM 0</h3>
+      <p>Total Inventory</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <h3 id="dashReceived">0 kg</h3>
+      <p>Received</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <h3 id="dashOnHand">0 kg</h3>
+      <p>On Hand</p>
+    </div>
+    <div class="card" style="text-align:center;">
+      <h3 id="dashShipped">0 kg</h3>
+      <p>Shipped</p>
+    </div>
+  </div>
+</div>
+<!-- ================= END DASHBOARD ================= -->
+
+<!-- STOCK ENTRY -->
+<div class="card">
+  <div class="section-title">Stock Entry</div>
+  <form id="stockForm">
+    <select id="supplierType">
+      <option value="Company">Company</option>
+      <option value="Walk-in">Walk-in</option>
+    </select>
+    <input type="text" id="company" placeholder="Company Name" required>
+    <input type="text" id="sku" placeholder="SKU Code" required>
+    <input type="text" id="category" placeholder="Type (Iron, Copper)" required>
+    <input type="number" id="weight" placeholder="Weight (kg)" required>
+    <input type="number" id="price" placeholder="Price / kg (RM)" required>
+    <select id="type">
+      <option value="IN">Stock IN</option>
+      <option value="OUT">Stock OUT</option>
+    </select>
+    <button class="btn-save" type="submit">Save Transaction</button>
+  </form>
+</div>
+
+<!-- INVENTORY TABLE -->
+<div class="card">
+  <div class="section-title">Current Inventory</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Supplier</th><th>SKU</th><th>Category</th>
+        <th>Weight</th><th>Price</th><th>Total</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- HISTORY -->
+<div class="card">
+  <div class="section-title">Stock Movement History</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Supplier</th><th>SKU</th><th>Action</th>
+        <th>Weight</th><th>Price</th><th>Total</th>
+        <th>Date</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let items = JSON.parse(localStorage.getItem("scrap_items")) || [];
+let history = JSON.parse(localStorage.getItem("scrap_history")) || [];
+
+let invStatusChart=null, shipStatusChart=null, inventoryChart=null;
+
+/* DASHBOARD */
+function renderDashboard(){
+  let received=0, shipped=0, onHand=0, totalValue=0;
+
+  history.forEach(h=>{
+    if(h.type==="IN") received+=h.weight;
+    if(h.type==="OUT") shipped+=h.weight;
+  });
+
+  items.forEach(i=>{
+    onHand+=i.weight;
+    totalValue+=i.weight*i.price;
+  });
+
+  dashReceived.innerText=received+" kg";
+  dashShipped.innerText=shipped+" kg";
+  dashOnHand.innerText=onHand+" kg";
+  dashTotalValue.innerText="RM "+totalValue.toFixed(2);
+
+  if(invStatusChart) invStatusChart.destroy();
+  invStatusChart=new Chart(inventoryStatusChart,{
+    type:"bar",
+    data:{
+      labels:["Received","On Hand","Shipped"],
+      datasets:[{
+        data:[received,onHand,shipped],
+        backgroundColor:["#16a34a","#2563eb","#ea580c"]
+      }]
+    },
+    options:{plugins:{legend:{display:false}}}
+  });
+
+  if(shipStatusChart) shipStatusChart.destroy();
+  shipStatusChart=new Chart(shipmentStatusChart,{
+    type:"doughnut",
+    data:{
+      labels:["Dispatch","In Transit","Delayed"],
+      datasets:[{
+        data:[shipped,received-shipped,received*0.1],
+        backgroundColor:["#16a34a","#facc15","#dc2626"]
+      }]
+    },
+    options:{cutout:"70%"}
+  });
+}
+
+/* EXISTING FUNCTIONS (UNCHANGED LOGIC) */
+function renderTable(){ /* unchanged */ tableBody.innerHTML="";
+  items.forEach((i,idx)=>{
+    tableBody.innerHTML+=`<tr>
+      <td>${i.company}</td><td>${i.sku}</td><td>${i.category}</td>
+      <td>${i.weight}</td><td>${i.price}</td>
+      <td>RM ${(i.weight*i.price).toFixed(2)}</td>
+      <td><button class="btn-delete" onclick="deleteItem(${idx})">Delete</button></td>
+    </tr>`;
+  });
+}
+
+function renderHistory(){ historyBody.innerHTML="";
+  history.slice().reverse().forEach((h,i)=>{
+    const r=history.length-1-i;
+    historyBody.innerHTML+=`<tr>
+      <td>${h.company}</td><td>${h.sku}</td>
+      <td class="${h.type==="IN"?"in":"out"}">${h.type}</td>
+      <td>${h.weight}</td><td>${h.price}</td>
+      <td>RM ${h.total}</td><td>${h.date}</td>
+      <td><button class="btn-delete" onclick="deleteHistory(${r})">Delete</button></td>
+    </tr>`;
+  });
+}
+
+renderTable();renderHistory();renderDashboard();
+</script>
+
+</body>
+</html>

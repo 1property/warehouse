@@ -1,37 +1,329 @@
-<!-- SYSTEM FEATURES -->
-<div class="card">
-  <div class="section-title">System Capabilities</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scrap Warehouse Management System</title>
 
-  <div class="features-grid">
-    <div class="feature">
-      <div class="icon">📦</div>
-      <p>Inventory Tracking</p>
-    </div>
+<style>
+* { box-sizing: border-box; }
 
-    <div class="feature">
-      <div class="icon">🧾</div>
-      <p>Goods Receipt Process</p>
-    </div>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f1f5f9;
+  margin: 0;
+  padding: 30px;
+  color: #1f2937;
+}
 
-    <div class="feature">
-      <div class="icon">🚚</div>
-      <p>Dispatch Management</p>
-    </div>
+/* HEADER */
+.header {
+  background: #1e40af;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 25px;
+  font-size: 22px;
+  font-weight: 600;
+}
 
-    <div class="feature">
-      <div class="icon">🖨️</div>
-      <p>Reprint Dispatch Sheets</p>
-    </div>
+/* CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: auto;
+}
 
-    <div class="feature">
-      <div class="icon">📱</div>
-      <p>Mobile App Ready</p>
-    </div>
+/* CARD */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
 
-    <div class="feature">
-      <div class="icon">📊</div>
-      <p>Reports & Analytics</p>
-    </div>
+/* FORM */
+form {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+input, select {
+  padding: 11px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+}
+
+/* BUTTONS */
+.btn-save {
+  grid-column: span 4;
+  padding: 13px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.btn-save:hover { background: #1d4ed8; }
+
+.btn-delete {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.in { color: #16a34a; font-weight: 600; }
+.out { color: #ea580c; font-weight: 600; }
+
+/* TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th {
+  background: #2563eb;
+  color: white;
+  padding: 10px;
+}
+
+td {
+  padding: 9px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.section-title {
+  font-weight: 600;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">♻️ Scrap Warehouse Management System</div>
+
+  <!-- STOCK ENTRY -->
+  <div class="card">
+    <div class="section-title">Stock Entry</div>
+
+    <form id="stockForm">
+      <select id="supplierType">
+        <option value="Company">Company</option>
+        <option value="Walk-in">Walk-in</option>
+      </select>
+
+      <input type="text" id="company" placeholder="Company Name" required>
+      <input type="text" id="sku" placeholder="SKU Code" required>
+      <input type="text" id="category" placeholder="Type (Iron, Copper)" required>
+      <input type="number" id="weight" placeholder="Weight (kg)" required>
+      <input type="number" id="price" placeholder="Price / kg (RM)" required>
+
+      <select id="type">
+        <option value="IN">Stock IN</option>
+        <option value="OUT">Stock OUT</option>
+      </select>
+
+      <button class="btn-save" type="submit">Save Transaction</button>
+    </form>
   </div>
+
+  <!-- INVENTORY -->
+  <div class="card">
+    <div class="section-title">Current Inventory</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th>SKU</th>
+          <th>Category</th>
+          <th>Weight (kg)</th>
+          <th>Price (RM)</th>
+          <th>Total (RM)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="card">
+    <div class="section-title">Stock Movement History</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th>SKU</th>
+          <th>Action</th>
+          <th>Weight</th>
+          <th>Price</th>
+          <th>Total</th>
+          <th>Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+
 </div>
+
+<script>
+let items = JSON.parse(localStorage.getItem("scrap_items")) || [];
+let history = JSON.parse(localStorage.getItem("scrap_history")) || [];
+
+const form = document.getElementById("stockForm");
+const tableBody = document.getElementById("tableBody");
+const historyBody = document.getElementById("historyBody");
+const supplierType = document.getElementById("supplierType");
+const companyInput = document.getElementById("company");
+
+/* WALK-IN HANDLER */
+supplierType.addEventListener("change", () => {
+  if (supplierType.value === "Walk-in") {
+    companyInput.value = "Walk-in";
+    companyInput.disabled = true;
+  } else {
+    companyInput.value = "";
+    companyInput.disabled = false;
+  }
+});
+
+/* RENDER INVENTORY */
+function renderTable() {
+  tableBody.innerHTML = "";
+  items.forEach((item, index) => {
+    const total = (item.weight * item.price).toFixed(2);
+    tableBody.innerHTML += `
+      <tr>
+        <td>${item.company}</td>
+        <td>${item.sku}</td>
+        <td>${item.category}</td>
+        <td>${item.weight}</td>
+        <td>${item.price}</td>
+        <td>RM ${total}</td>
+        <td>
+          <button class="btn-delete" onclick="deleteItem(${index})">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+/* RENDER HISTORY (WITH DELETE) */
+function renderHistory() {
+  historyBody.innerHTML = "";
+  history.slice().reverse().forEach((h, index) => {
+    const realIndex = history.length - 1 - index;
+    historyBody.innerHTML += `
+      <tr>
+        <td>${h.company}</td>
+        <td>${h.sku}</td>
+        <td class="${h.type === 'IN' ? 'in' : 'out'}">${h.type}</td>
+        <td>${h.weight}</td>
+        <td>${h.price}</td>
+        <td>RM ${h.total}</td>
+        <td>${h.date}</td>
+        <td>
+          <button class="btn-delete" onclick="deleteHistory(${realIndex})">
+            Delete
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+/* SAVE */
+form.addEventListener("submit", e => {
+  e.preventDefault();
+
+  const company = companyInput.value || "Walk-in";
+  const sku = document.getElementById("sku").value.trim();
+  const category = document.getElementById("category").value.trim();
+  const weight = parseFloat(document.getElementById("weight").value);
+  const price = parseFloat(document.getElementById("price").value);
+  const type = document.getElementById("type").value;
+
+  if (!sku || !category || weight <= 0 || price <= 0) {
+    alert("Please fill all fields correctly");
+    return;
+  }
+
+  let item = items.find(i => i.sku === sku);
+  if (!item) {
+    item = { company, sku, category, weight: 0, price };
+    items.push(item);
+  }
+
+  if (type === "IN") {
+    item.weight += weight;
+    item.price = price;
+  } else {
+    if (item.weight < weight) {
+      alert("Not enough stock");
+      return;
+    }
+    item.weight -= weight;
+  }
+
+  history.push({
+    company, sku, type, weight, price,
+    total: (weight * price).toFixed(2),
+    date: new Date().toLocaleString()
+  });
+
+  localStorage.setItem("scrap_items", JSON.stringify(items));
+  localStorage.setItem("scrap_history", JSON.stringify(history));
+
+  form.reset();
+  companyInput.disabled = false;
+  renderTable();
+  renderHistory();
+});
+
+/* DELETE INVENTORY ITEM */
+function deleteItem(index) {
+  if (confirm("Delete item?")) {
+    items.splice(index, 1);
+    localStorage.setItem("scrap_items", JSON.stringify(items));
+    renderTable();
+  }
+}
+
+/* DELETE HISTORY WITH PASSWORD */
+function deleteHistory(index) {
+  const password = prompt("Enter admin password:");
+
+  if (password !== "0000") {
+    alert("Wrong password!");
+    return;
+  }
+
+  if (confirm("Delete this history record?")) {
+    history.splice(index, 1);
+    localStorage.setItem("scrap_history", JSON.stringify(history));
+    renderHistory();
+  }
+}
+
+renderTable();
+renderHistory();
+</script>
+
+</body>
+</html>
+
 

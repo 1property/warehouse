@@ -1,0 +1,22 @@
+.header-card {
+  background: #7581a8;
+  color: white;
+  padding: 18px;
+  border-radius: 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.section-title {
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.in { color: #16a34a; font-weight: 600; }
+.out { color: #ea580c; font-weight: 600; }

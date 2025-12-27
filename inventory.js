@@ -1,17 +1,17 @@
 /***********************
  * TM ENVICO PILOT INVENTORY SYSTEM
- * inventory.js (FINAL – CLIENT + EDIT + DELETE HISTORY)
+ * inventory.js (FINAL – CLIENT + EDIT + DELETE + EXPORT)
  ***********************/
 
 let role = "staff";
 const ADMIN_PASSWORD = "12345";
 
-/* STORAGE */
+/* ================= STORAGE ================= */
 let inventory = JSON.parse(localStorage.getItem("tm_inventory")) || [];
-let history = JSON.parse(localStorage.getItem("tm_history")) || [];
-let clients = JSON.parse(localStorage.getItem("tm_clients")) || [];
+let history   = JSON.parse(localStorage.getItem("tm_history")) || [];
+let clients   = JSON.parse(localStorage.getItem("tm_clients")) || [];
 
-/* NORMALIZE INVENTORY */
+/* ================= NORMALIZE INVENTORY ================= */
 inventory = inventory.map(i => ({
   sku: i.sku,
   name: i.name,
@@ -20,7 +20,7 @@ inventory = inventory.map(i => ({
   stock: Number(i.stock) || 0
 }));
 
-/* DOM */
+/* ================= DOM ================= */
 const roleSwitch = document.getElementById("roleSwitch");
 const skuInput = document.getElementById("sku");
 const itemNameInput = document.getElementById("itemName");
@@ -117,9 +117,10 @@ document.getElementById("stockForm").addEventListener("submit", e => {
     item.stock -= weight;
   }
 
-  let clientDisplay = supplierTypeInput.value === "company"
-    ? clients.find(c => c.code === companyCodeInput.value.trim())?.name || "Unknown Company"
-    : personNameInput.value || "Walk-in";
+  const clientDisplay =
+    supplierTypeInput.value === "company"
+      ? clients.find(c => c.code === companyCodeInput.value.trim())?.name || "Unknown Company"
+      : personNameInput.value || "Walk-in";
 
   history.push({
     sku,
@@ -150,11 +151,9 @@ function editHistory(index) {
   const newQty = Number(prompt("Enter new quantity:", h.weight));
   if (!newQty || newQty <= 0) return;
 
-  // rollback old
   if (h.type === "IN") item.stock -= h.weight;
   else item.stock += h.weight;
 
-  // apply new
   if (h.type === "IN") item.stock += newQty;
   else item.stock -= newQty;
 
@@ -170,10 +169,11 @@ function editHistory(index) {
 /* ================= DELETE HISTORY (ADMIN) ================= */
 function deleteHistory(index) {
   if (role !== "admin") return;
-  if (!confirm("Delete this history record?")) return;
+  if (!confirm("Delete this record?")) return;
 
   const h = history[index];
   const item = inventory.find(i => i.sku === h.sku);
+
   if (item) {
     if (h.type === "IN") item.stock -= h.weight;
     else item.stock += h.weight;
@@ -240,6 +240,60 @@ function renderClients() {
   });
 }
 
+/* ================= EXPORT HELPERS ================= */
+function downloadCSV(filename, rows) {
+  const csv = rows.map(r =>
+    r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+  ).join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+/* ================= EXPORT FUNCTIONS (ADMIN ONLY) ================= */
+function exportInventory() {
+  if (role !== "admin") return alert("Admin only");
+
+  const rows = [["SKU", "Item", "Category", "Stock", "Price"]];
+  inventory.forEach(i =>
+    rows.push([i.sku, i.name, i.category, i.stock, i.price])
+  );
+  downloadCSV("inventory.csv", rows);
+}
+
+function exportHistory() {
+  if (role !== "admin") return alert("Admin only");
+
+  const rows = [["SKU", "Item", "Category", "Client", "Type", "Qty", "Price", "Total", "Date"]];
+  history.forEach(h =>
+    rows.push([
+      h.sku,
+      inventory.find(i => i.sku === h.sku)?.name || "",
+      h.category,
+      h.client,
+      h.type,
+      h.weight,
+      h.price,
+      h.total,
+      h.datetime
+    ])
+  );
+  downloadCSV("stock_history.csv", rows);
+}
+
+function exportClients() {
+  if (role !== "admin") return alert("Admin only");
+
+  const rows = [["Type", "Code", "Name", "Person", "Phone", "Created"]];
+  clients.forEach(c =>
+    rows.push([c.type, c.code, c.name, c.person, c.phone, c.createdAt])
+  );
+  downloadCSV("clients.csv", rows);
+}
+
 /* ================= RENDER ALL ================= */
 function renderAll() {
   inventoryDiv.innerHTML = "";
@@ -283,6 +337,6 @@ function renderAll() {
   renderClients();
 }
 
-/* INIT */
+/* ================= INIT ================= */
 applyRoleUI();
 renderAll();
